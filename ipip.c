@@ -216,13 +216,13 @@ int ipip_decap(uint8_t *buf, int size)
     if(inner->ip_ttl == 0) //TTL exceeded - drop packet (RFC 2003)
         return 0;
 
-    if(inner->ip_len != (size - IPV4_HEADER_SIZE)) //inner packet has different length than specified in header
+    if(ntohs(inner->ip_len) != (size - IPV4_HEADER_SIZE)) //inner packet has different length than specified in header
     {
         PRINT("Packet length inconsistent (header claims %d bytes, actually has %d bytes)\n", inner->ip_len, size - IPV4_HEADER_SIZE);
         return -1;
     }
 
-    int written = write(tunfd, &(buf[IPV4_HEADER_SIZE]), inner->ip_len); //write to TUN interface without outer header
+    int written = write(tunfd, &(buf[IPV4_HEADER_SIZE]), size - IPV4_HEADER_SIZE); //write to TUN interface without outer header
     
     if(written < 0) //error
     {
