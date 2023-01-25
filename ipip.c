@@ -269,6 +269,8 @@ int Ipip_exec()
         {
             int size = recv(sockfd, buf, IPV4_HEADER_SIZE + IPV4_MAX_PACKET_SIZE, MSG_DONTWAIT); //receive encapsulated packet
 
+            printf("Received %d bytes\n", size);
+
             if(size < 0) //an error
             {
                 if((errno != EWOULDBLOCK) && (errno != EAGAIN)) //error other than "would block"

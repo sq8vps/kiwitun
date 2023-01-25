@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     DEBUG("IPIP tunnel creation");
 
     setAddress(&(config.local), "0.0.0.0");
-    setAddress(&(config.remote), "1.0.0.1");
+    setAddress(&(config.remote), "10.0.0.7");
 
     //start tunnel execution
     if(Ipip_exec() < 0)
