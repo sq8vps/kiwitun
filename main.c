@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     DEBUG("TUN interface creation");
 
     //create tunnel
-    if(Ipip_init(tunfd) < 0)
+    if((sockfd = Ipip_init(tunfd)) < 0)
     {
         DEBUG("IPIP tunnel creation failed");
         close(tunfd);

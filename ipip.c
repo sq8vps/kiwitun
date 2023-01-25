@@ -24,9 +24,17 @@ int Ipip_init(int tun)
 {
     tunfd = tun;
     
-    if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) //try to create raw IPv4 socket
+    if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_IPIP)) < 0) //try to create raw IPv4 socket
     {
         return sockfd; //return if failure
+    }
+
+    int enable = 1;
+    if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable)) < 0) 
+    {
+        DEBUG("Socket option set failed");
+        close(sockfd);
+        return -1;
     }
 
     return sockfd;
@@ -267,13 +275,13 @@ int Ipip_exec()
 
         if(FD_ISSET(sockfd, &rd_set)) //event on socket descriptor?
         {
-            int size = recv(sockfd, buf, IPV4_HEADER_SIZE + IPV4_MAX_PACKET_SIZE, MSG_DONTWAIT); //receive encapsulated packet
+            int size = recv(sockfd, buf, IPV4_HEADER_SIZE + IPV4_MAX_PACKET_SIZE, 0); //receive encapsulated packet
 
             printf("Received %d bytes\n", size);
 
             if(size < 0) //an error
             {
-                if((errno != EWOULDBLOCK) && (errno != EAGAIN)) //error other than "would block"
+                //if((errno != EWOULDBLOCK) && (errno != EAGAIN)) //error other than "would block"
                     DEBUG("Socket RX failed");
 
                 goto continueIPIP; //continue the loop
