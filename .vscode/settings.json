@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "if.h": "c",
+        "if_tun.h": "c",
+        "socket.h": "c",
+        "ipip.h": "c",
+        "in.h": "c",
+        "ip.h": "c",
+        "common.h": "c",
+        "inet.h": "c",
+        "ip6.h": "c"
+    }
+}
