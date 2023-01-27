@@ -12,7 +12,6 @@
 #include "common.h"
 
 int tunfd = 0; //tun descriptor
-int sockfd = 0; //IPIP socket descriptor
 
 void sigterm_handler(int signum)
 {
@@ -21,11 +20,6 @@ void sigterm_handler(int signum)
         close(tunfd);
         DEBUG("Closing tunnel");
     }
-    if(sockfd > 0)
-    {
-        close(tunfd);
-        DEBUG("Closing IP socket");
-    }
     PRINT("Exiting...\n");
     exit(0);
 }
@@ -33,6 +27,8 @@ void sigterm_handler(int signum)
 int main(int argc, char **argv)
 {
     config.debug = 1;
+    config.tun4in4 = 1;
+    config.tun6in4 = 0;
     config.ttl = DEFAULT_IPV4_TTL;
     
     //set sigterm handler
@@ -53,24 +49,22 @@ int main(int argc, char **argv)
     DEBUG("TUN interface creation");
 
     //create tunnel
-    if((sockfd = Ipip_init(tunfd)) < 0)
+    if(Ipip_init(tunfd) < 0)
     {
         DEBUG("IPIP tunnel creation failed");
         close(tunfd);
-        close(sockfd);
         exit(0);
     }
     DEBUG("IPIP tunnel creation");
 
     setAddress(&(config.local), "0.0.0.0");
-    setAddress(&(config.remote), "10.0.0.7");
+    setAddress(&(config.remote), "1.2.3.4");
 
     //start tunnel execution
     if(Ipip_exec() < 0)
     {
         DEBUG("IPIP tunneling failed");
         close(tunfd);
-        close(sockfd);
         exit(0);
     }
 

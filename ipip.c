@@ -11,33 +11,51 @@
 #include <stdint.h>
 #include <unistd.h>
 #include "common.h"
-
+#include "icmp.h"
 
 
 #include <string.h>
 
 
-static int sockfd = 0; //raw socket descriptor
+static int sockfd = 0; //IPIP socket descriptor
+static int sock6fd = 0; //IP6IP socket descriptor 
 static int tunfd = 0; //tun descriptor
 
 int Ipip_init(int tun)
 {
     tunfd = tun;
     
-    if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_IPIP)) < 0) //try to create raw IPv4 socket
+    if(config.tun4in4) //enable 4-in-4 tunneling
     {
-        return sockfd; //return if failure
+        if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_IPIP)) < 0) //try to create raw IPv4 socket
+        {
+            return -1; //return if failure
+        }
+
+        int enable = 1;
+        if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable)) < 0) //tell kernel to not add IP header
+        {
+            close(sockfd);
+            return -1;
+        }
     }
 
-    int enable = 1;
-    if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable)) < 0) 
+    if(config.tun6in4) //enable 6-in-4 tunneling
     {
-        DEBUG("Socket option set failed");
-        close(sockfd);
-        return -1;
+        if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_IPV6)) < 0) //try to create raw IPv4 socket
+        {
+            return -1; //return if failure
+        }
+
+        int enable = 1;
+        if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable)) < 0) //tell kernel to not add IP header
+        {
+            close(sockfd);
+            return -1;
+        }
     }
 
-    return sockfd;
+    return 0;
 }
 
 /**
@@ -97,16 +115,31 @@ int ipip_encap(uint8_t *buf, int size)
     struct ip *outer = (struct ip*)buf; //set pointer to outer IP header
     struct ip *inner = (struct ip*)(&buf[IPV4_HEADER_SIZE]); //get inner IP header
 
-    if(inner->ip_v != IPVX_HEADER_VERSION_4) //not IPv4 packet
+    if(inner->ip_v != IPVX_HEADER_VERSION_4) //not IPv4 packet somehow
         return -1;
+
+    if(inner->ip_hl != (IPV4_HEADER_SIZE / 4)) //drop packets than don't have standard headers
+    {
+        PRINT("Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
+        return -1;
+    }
+
+    //when receiving packet its length is restricted to (max IP packet size - IPv4 header size), so that it can be encapsulated
+    //check if packet is too big for encapsulation (or length field in header is broken)
+    if(ntohs(inner->ip_len) != size)
+    {
+        PRINT("Packet received on tunnel interface has inconsistent size or is too big to be tunneled\n");
+        return -1;
+    }
 
     //TTL behavior according to RFC 2003
     if(inner->ip_ttl == 0) //TTL=0, drop packet
         return 0;
     else if(inner->ip_ttl == 1) //TTL=1, will be 0 after decrementation, send ICMP Time Exceeded
     {
-        //time exceeded, send ICMP
-        return 0;
+        //time exceeded, send ICMP response: Time Exceeded
+        return ICMP_send(sockfd, &(buf[IPV4_HEADER_SIZE]), size, (config.local.s_addr == 0) ? 0 : config.local.s_addr,
+                    ICMP_TIME_EXCEEDED, ICMP_EXC_TTL, 0);
     }
 
     inner->ip_ttl--; //decrement TTL
@@ -116,7 +149,8 @@ int ipip_encap(uint8_t *buf, int size)
     outer->ip_v = IPVX_HEADER_VERSION_4; //IPv4 packet
     outer->ip_hl = IPV4_HEADER_SIZE / 4; //header size in 32-bit units
     outer->ip_tos = inner->ip_tos; //copy TOS
-    outer->ip_len = size + IPV4_HEADER_SIZE; //whole packet is the inner packet + outer header
+    //outer->ip_len = size + IPV4_HEADER_SIZE; //whole packet is the inner packet + outer header
+    //kernel fills length field anyway
     outer->ip_p = IPV4_HEADER_PROTO_IPIP; //IPIP protocol used
     outer->ip_id = 0; //no fragmentation
     outer->ip_off = inner->ip_off & IP_DF; //copy don't fragment flag only. Set other bits to 0
@@ -141,7 +175,7 @@ int ipip_encap(uint8_t *buf, int size)
         return -1;
     }
 
-    outer->ip_dst.s_addr = dest.sin_addr.s_addr; //fill outer destionation field
+    outer->ip_dst.s_addr = dest.sin_addr.s_addr; //fill outer destination field
 
     if(outer->ip_dst.s_addr == inner->ip_src.s_addr) //drop if tunnel destination is the same as inner packet source (RFC 2003)
     {
@@ -213,6 +247,19 @@ int ipip_decap(uint8_t *buf, int size)
         return -1;
     }
 
+
+    if(outer->ip_hl != (IPV4_HEADER_SIZE / 4)) //drop packets than don't have standard headers
+    {
+        PRINT("Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
+        return -1;
+    }
+
+    if(inner->ip_hl != (IPV4_HEADER_SIZE / 4)) //drop packets than don't have standard headers
+    {
+        PRINT("Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
+        return -1;
+    }
+
     if(inner->ip_ttl == 0) //TTL exceeded - drop packet (RFC 2003)
         return 0;
 
@@ -252,7 +299,7 @@ int ip6ip_decap(uint8_t *buf, int size)
 
 int Ipip_exec()
 {
-    uint8_t buf[IPV4_HEADER_SIZE + IPV4_MAX_PACKET_SIZE]; //create buffer for packets
+    uint8_t buf[IP_MAX_PACKET_SIZE]; //create buffer for packets
     
     while(1)
     {
@@ -275,9 +322,7 @@ int Ipip_exec()
 
         if(FD_ISSET(sockfd, &rd_set)) //event on socket descriptor?
         {
-            int size = recv(sockfd, buf, IPV4_HEADER_SIZE + IPV4_MAX_PACKET_SIZE, 0); //receive encapsulated packet
-
-            printf("Received %d bytes\n", size);
+            int size = recv(sockfd, buf, IP_MAX_PACKET_SIZE, 0); //receive encapsulated packet
 
             if(size < 0) //an error
             {
@@ -311,7 +356,7 @@ int Ipip_exec()
 
         if(FD_ISSET(tunfd, &rd_set)) //event on tun descriptor?
         {
-            int size = read(tunfd, &(buf[IPV4_HEADER_SIZE]), IPV4_MAX_PACKET_SIZE); //receive packet and leave room for outer IP header
+            int size = read(tunfd, &(buf[IPV4_HEADER_SIZE]), IP_MAX_PACKET_SIZE - IPV4_HEADER_SIZE); //receive packet and leave room for outer IP header
 
             if(size < 0) //an error
             {
@@ -324,11 +369,13 @@ int Ipip_exec()
                 continue;
             }
             
-            struct ip *inner = (struct ip*)(&buf[IPV4_HEADER_SIZE]); //get inner IP header
+            struct ip *inner = (struct ip*)(&buf[IPV4_HEADER_SIZE]); //get inner IP header (IPv4 temporarily - protocol version is still in the same place)
             if(inner->ip_v == IPVX_HEADER_VERSION_4) //this is an IPv4 packet
-                ipip_encap(buf, size); //encapsulate and send
+                if(config.tun4in4) //if enabled
+                    ipip_encap(buf, size); //encapsulate and send
             else if(inner->ip_v == IPVX_HEADER_VERSION_6) //this is an IPv6 packet
-                ip6ip_encap(buf, size); //encapsulate and send
+                if(config.tun6in4) //if enabled
+                    ip6ip_encap(buf, size); //encapsulate and send
             else //non-IP packet
                 continue; //do not process it
         }

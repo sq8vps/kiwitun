@@ -4,8 +4,8 @@ project(kiwitun VERSION 0.1.0)
 add_executable(kiwitun main.c
                 tun.c tun.h
                 ipip.c ipip.h
-                sock.c sock.h
                 common.c common.h
+                icmp.c icmp.h
 )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})

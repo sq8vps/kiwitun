@@ -5,9 +5,30 @@
 #include <stdint.h>
 #include <netinet/ip.h>
 
+#define IP_MAX_PACKET_SIZE 65535
+#define IPV4_HEADER_SIZE 20
+#define IPV4_HEADER_CHECKSUM_POS 10
+
+#define IPV4_HEADER_PROTO_IPIP 0x04
+#define IPV4_HEADER_PROTO_IP6IP 0x29
+#define IPV4_HEADER_PROTO_ICMP 0x01
+
+#define IPVX_HEADER_VERSION_4 0x04
+#define IPVX_HEADER_VERSION_6 0x06
+
+#define IPV6_HEADER_SIZE 40
+
+
+#define ICMP_HEADER_SIZE 8
+#define ICMP_ADDITIONAL_DATA_SIZE 8
+#define ICMP_DEFAULT_TTL 64
+#define ICMP_HEADER_CHECKSUM_POS 2
+
 struct Config_s
 {
     uint8_t debug : 1; //debug (verbose) mode enabled
+    uint8_t tun4in4 : 1; //enable IPIP (4-in-4) tunneling
+    uint8_t tun6in4 : 1; //enable IP6IP (6-in-4) tunneling
 
     uint8_t ttl; //TTL value for outer IP header
     struct in_addr local, remote; //local and remote IPv4 address (INADDR_ANY/NULL for automatic selection)

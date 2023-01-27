@@ -8,6 +8,9 @@
         "ip.h": "c",
         "common.h": "c",
         "inet.h": "c",
-        "ip6.h": "c"
+        "ip6.h": "c",
+        "errno.h": "c",
+        "select.h": "c",
+        "ip_icmp.h": "c"
     }
 }

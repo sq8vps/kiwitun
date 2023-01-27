@@ -24,5 +24,7 @@ int setAddress6(struct in6_addr *s, char *addr)
     return 0;
 }
 
+
+
 struct Config_s config;
 

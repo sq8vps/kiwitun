@@ -172,6 +172,33 @@ common.c.s:
 	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/common.c.s
 .PHONY : common.c.s
 
+icmp.o: icmp.c.o
+
+.PHONY : icmp.o
+
+# target to build an object file
+icmp.c.o:
+	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/icmp.c.o
+.PHONY : icmp.c.o
+
+icmp.i: icmp.c.i
+
+.PHONY : icmp.i
+
+# target to preprocess a source file
+icmp.c.i:
+	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/icmp.c.i
+.PHONY : icmp.c.i
+
+icmp.s: icmp.c.s
+
+.PHONY : icmp.s
+
+# target to generate assembly for a file
+icmp.c.s:
+	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/icmp.c.s
+.PHONY : icmp.c.s
+
 ipip.o: ipip.c.o
 
 .PHONY : ipip.o
@@ -226,33 +253,6 @@ main.c.s:
 	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/main.c.s
 .PHONY : main.c.s
 
-sock.o: sock.c.o
-
-.PHONY : sock.o
-
-# target to build an object file
-sock.c.o:
-	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/sock.c.o
-.PHONY : sock.c.o
-
-sock.i: sock.c.i
-
-.PHONY : sock.i
-
-# target to preprocess a source file
-sock.c.i:
-	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/sock.c.i
-.PHONY : sock.c.i
-
-sock.s: sock.c.s
-
-.PHONY : sock.s
-
-# target to generate assembly for a file
-sock.c.s:
-	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/sock.c.s
-.PHONY : sock.c.s
-
 tun.o: tun.c.o
 
 .PHONY : tun.o
@@ -294,15 +294,15 @@ help:
 	@echo "... common.o"
 	@echo "... common.i"
 	@echo "... common.s"
+	@echo "... icmp.o"
+	@echo "... icmp.i"
+	@echo "... icmp.s"
 	@echo "... ipip.o"
 	@echo "... ipip.i"
 	@echo "... ipip.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
-	@echo "... sock.o"
-	@echo "... sock.i"
-	@echo "... sock.s"
 	@echo "... tun.o"
 	@echo "... tun.i"
 	@echo "... tun.s"
