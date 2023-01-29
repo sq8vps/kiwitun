@@ -1,8 +1,11 @@
 #ifndef ROUTE_H_
 #define ROUTE_H_
 
-#include <linux/rtnetlink.h>
-#include <linux/netlink.h>
-#include <linux/if_addr.h>
+#include "common.h"
+#include <stdint-gcc.h>
+
+int Route_update();
+
+int Route_init();
 
 #endif

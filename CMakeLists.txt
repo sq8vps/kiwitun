@@ -6,6 +6,7 @@ add_executable(kiwitun main.c
                 ipip.c ipip.h
                 common.c common.h
                 icmp.c icmp.h
+                route.c route.h
 )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})

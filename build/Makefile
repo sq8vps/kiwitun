@@ -253,6 +253,33 @@ main.c.s:
 	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/main.c.s
 .PHONY : main.c.s
 
+route.o: route.c.o
+
+.PHONY : route.o
+
+# target to build an object file
+route.c.o:
+	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/route.c.o
+.PHONY : route.c.o
+
+route.i: route.c.i
+
+.PHONY : route.i
+
+# target to preprocess a source file
+route.c.i:
+	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/route.c.i
+.PHONY : route.c.i
+
+route.s: route.c.s
+
+.PHONY : route.s
+
+# target to generate assembly for a file
+route.c.s:
+	$(MAKE) -f CMakeFiles/kiwitun.dir/build.make CMakeFiles/kiwitun.dir/route.c.s
+.PHONY : route.c.s
+
 tun.o: tun.c.o
 
 .PHONY : tun.o
@@ -303,6 +330,9 @@ help:
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
+	@echo "... route.o"
+	@echo "... route.i"
+	@echo "... route.s"
 	@echo "... tun.o"
 	@echo "... tun.i"
 	@echo "... tun.s"

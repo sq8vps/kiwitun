@@ -10,6 +10,7 @@
 #include <linux/if.h>
 #include <arpa/inet.h>
 #include "common.h"
+#include "route.h"
 
 int tunfd = 0; //tun descriptor
 
@@ -26,10 +27,14 @@ void sigterm_handler(int signum)
 
 int main(int argc, char **argv)
 {
+
+    
     config.debug = 1;
     config.tun4in4 = 1;
     config.tun6in4 = 0;
     config.ttl = DEFAULT_IPV4_TTL;
+    Route_init();
+    Route_update();
     
     //set sigterm handler
     struct sigaction sa;
