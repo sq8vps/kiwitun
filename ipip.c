@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include "common.h"
 #include "icmp.h"
+#include "route.h"
 
 
 #include <string.h>
@@ -54,6 +55,8 @@ int Ipip_init(int tun)
             return -1;
         }
     }
+
+    
 
     return 0;
 }
@@ -100,8 +103,8 @@ in_addr_t ipip_getDestination(in_addr_t addr)
 {
     if(config.remote.s_addr != 0) //there is a fixed remote IP address defined
         return config.remote.s_addr; //use it
-    
-    return 0;
+
+    return Route_get(addr); //else get from routing table
 }
 
 /**
@@ -172,6 +175,9 @@ int ipip_encap(uint8_t *buf, int size)
     if(dest.sin_addr.s_addr == 0) //do not send when remote address is not known
     {
         PRINT("Unknown remote address!\n");
+        //set ICMP destination unreachable - host unknown
+        ICMP_send(sockfd, &(buf[IPV4_HEADER_SIZE]), size, (config.local.s_addr == 0) ? 0 : config.local.s_addr,
+            ICMP_DEST_UNREACH, ICMP_HOST_UNKNOWN, 0);
         return -1;
     }
 

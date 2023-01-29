@@ -27,8 +27,6 @@ void sigterm_handler(int signum)
 
 int main(int argc, char **argv)
 {
-
-    
     config.debug = 1;
     config.tun4in4 = 1;
     config.tun6in4 = 0;
@@ -63,7 +61,7 @@ int main(int argc, char **argv)
     DEBUG("IPIP tunnel creation");
 
     setAddress(&(config.local), "0.0.0.0");
-    setAddress(&(config.remote), "1.2.3.4");
+    setAddress(&(config.remote), "0.0.0.0");
 
     //start tunnel execution
     if(Ipip_exec() < 0)

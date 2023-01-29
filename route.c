@@ -2,14 +2,13 @@
  * @file route.c
  * @brief Route selection module
  * 
- * This module maintains local routing tables acquired from kernel and provides route lookup for given destionation address.
+ * This module maintains local routing tables acquired from kernel and provides a route lookup for given destination address.
  * It is shell- and system files-independent module that uses only netlink and rtnetlink Linux kernel functionalities.
  * Netlink and especially rtnetlink are VERY poorly documented. The code for reading routes from kernel is based
- * mainly on this answer: https://stackoverflow.com/a/3288983
+ * mainly on this answer: https://stackoverflow.com/a/3288983 (https://stackoverflow.com/questions/3288065/getting-gateway-to-use-for-a-given-ip-in-ansi-c)
 **/
 
 #include "route.h"
-#include <netinet/in.h>
 #include <net/if.h>
 #include <stdio.h>
 #include <string.h>
@@ -148,6 +147,7 @@ void route_parseAndAdd(struct nlmsghdr *nl)
 
         route_resizeTable(routeEntries + 1); //add new route entry
         routes[routeEntries].netmask.s_addr = CIDR_TO_ADDR4(rt->rtm_dst_len); //get netmask length and convert it to address
+
         for (; RTA_OK(rtAttr, len); rtAttr = RTA_NEXT(rtAttr, len)) //go through all attributes
         {
             switch(rtAttr->rta_type) 
@@ -162,21 +162,17 @@ void route_parseAndAdd(struct nlmsghdr *nl)
                     break;
             }
         }
-        // char tmp[100];
-        // inet_ntop(AF_INET, &(routes[routeEntries].address), tmp, 100);
-        // printf("%s", tmp);
-        // inet_ntop(AF_INET, &(routes[routeEntries].netmask), tmp, 100);
-        // printf(" netmask %s", tmp);
-        // inet_ntop(AF_INET, &(routes[routeEntries].gateway), tmp, 100);
-        // printf(" via %s\n", tmp);
 
-        routeEntries++;
+        if(routes[routeEntries].address.s_addr != INADDR_ANY) //is this not a default gateway?
+            routeEntries++;
+        //omit default gateways
     }
     else if(rt->rtm_family == AF_INET6) //an IPv6 route
     {
         route_resizeTable6(route6Entries + 1); //add new route entry
         routes6[route6Entries].netmask = in6addr_any;
         routes6[route6Entries].netmask = CIDR_TO_ADDR6(rt->rtm_dst_len); //get netmask length and convert it to address
+
         for (; RTA_OK(rtAttr, len); rtAttr = RTA_NEXT(rtAttr, len)) //go through all attributes
         {
             if(rt->rtm_type != RTN_UNICAST) //accept only gateways or direct routes
@@ -194,14 +190,32 @@ void route_parseAndAdd(struct nlmsghdr *nl)
                     break;
             }
         }
-        // char tmp[100];
-        // inet_ntop(AF_INET6, &(routes6[route6Entries].address), tmp, 100);
-        // printf("%s", tmp);
-        // inet_ntop(AF_INET6, &(routes6[route6Entries].netmask), tmp, 100);
-        // printf(" netmask %s", tmp);
-        // inet_ntop(AF_INET6, &(routes6[route6Entries].gateway), tmp, 100);
-        // printf(" via %s\n", tmp);
         route6Entries++;
+    }
+}
+
+void Route_print()
+{
+    printf("Stored routes:\n");
+    for(uint64_t i = 0; i < routeEntries; i++)
+    {
+        char tmp[100];
+        inet_ntop(AF_INET, &(routes[i].address), tmp, 100);
+        printf("%s", tmp);
+        inet_ntop(AF_INET, &(routes[i].netmask), tmp, 100);
+        printf(" netmask %s", tmp);
+        inet_ntop(AF_INET, &(routes[i].gateway), tmp, 100);
+        printf(" via %s\n", tmp);
+    }
+    for(uint64_t i = 0; i < route6Entries; i++)
+    {
+        char tmp[200];
+        inet_ntop(AF_INET6, &(routes6[i].address), tmp, 200);
+        printf("%s", tmp);
+        inet_ntop(AF_INET6, &(routes6[i].netmask), tmp, 200);
+        printf(" netmask %s", tmp);
+        inet_ntop(AF_INET6, &(routes6[i].gateway), tmp, 200);
+        printf(" via %s\n", tmp);
     }
 }
 
@@ -271,8 +285,69 @@ int64_t route_getAndVerify(int s, uint8_t *buf, size_t maxBuf, sa_family_t famil
     return bufSize;
 }
 
+in_addr_t Route_get(in_addr_t address)
+{
+    for(uint64_t i = 0; i < routeEntries; i++)
+    {
+        if((address & routes[i].netmask.s_addr) == routes[i].address.s_addr) //route is matching
+        {
+            return routes[i].gateway.s_addr;    
+        }
+    }
+
+    return 0; //no matching route
+}
+
+
+//compare function for IPv4 routing table sort
+int sort_compare4(const void *a, const void *b)
+{
+    struct Route_s *s1 = (struct Route_s*)a;
+    struct Route_s *s2 = (struct Route_s*)b;
+    
+    // if(ntohl(s1->address.s_addr) < ntohl(s2->address.s_addr))
+    //     return -1;
+    // else if(ntohl(s1->address.s_addr) > ntohl(s2->address.s_addr))
+    //     return 1;
+    // else
+    // {
+    //     return (ntohl(s1->netmask.s_addr) < ntohl(s2->netmask.s_addr)) - (ntohl(s1->netmask.s_addr) > ntohl(s2->netmask.s_addr));
+    // }
+
+    if(ntohl(s1->netmask.s_addr) < ntohl(s2->netmask.s_addr))
+        return 1;
+    else if(ntohl(s1->netmask.s_addr) > ntohl(s2->netmask.s_addr))
+        return -1;
+    else
+    {
+        return (ntohl(s1->address.s_addr) > ntohl(s2->address.s_addr)) - (ntohl(s1->address.s_addr) < ntohl(s2->address.s_addr));
+    }
+
+    return 0; //dummy
+}
+
+//compare function for IPv6 routing table sort
+// int sort_compare6(struct Route6_s *s1, struct Route6_s *s2)
+// {
+//     if(s1->address.s_addr < s2->address.s_addr)
+//         return -1;
+//     else if(s1->address.s_addr > s2->address.s_addr)
+//         return 1;
+//     else
+//     {
+//         return (s1->netmask.s_addr < s2->netmask.s_addr) - (s1->netmask.s_addr > s2->netmask.s_addr);
+//     }
+
+//     return 0; //dummy
+// }
+
 int Route_update()
 {
+    free(routes);
+    free(routes6);
+    routeEntries = 0;
+    route6Entries = 0;
+    
     int s; //netlink socket handler
     uint8_t buf[NETLINK_BUF_SIZE]; //netlink data buffer
     memset(buf, 0, NETLINK_BUF_SIZE); //clear buffer
@@ -323,6 +398,11 @@ int Route_update()
     }
 
     close(s); //close netlink socket
+
+
+    qsort(routes, routeEntries, sizeof(*routes), sort_compare4); //sort route table by destination (in ascending order) first, then by netmask (in descendig order)
+    //qsort(routes6, route6Entries, sizeof(*routes6), sort_compare6);
+
     return 0;
 }
 

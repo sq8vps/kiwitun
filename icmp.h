@@ -19,7 +19,7 @@
  * @param code ICMP response code
  * @param rest ICMP respose rest of header (or 0 if not used)
  * @return 0 on success, -1 on failure
- * @warning Sanity check of input IPv4 packet is the responsibility of caller.
+ * @warning Sanity check of input IPv4 packet is the responsibility of a caller.
 **/
 int ICMP_send(int s, uint8_t *data, int size, in_addr_t source, uint8_t type, uint8_t code, uint32_t rest);
 
