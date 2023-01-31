@@ -9,6 +9,8 @@ add_executable(kiwitun main.c
                 route.c route.h
 )
 
+target_link_libraries(kiwitun PUBLIC pthread)
+
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)

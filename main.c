@@ -14,17 +14,6 @@
 
 int tunfd = 0; //tun descriptor
 
-void sigterm_handler(int signum)
-{
-    if(tunfd > 0)
-    {
-        close(tunfd);
-        DEBUG("Closing tunnel");
-    }
-    PRINT("Exiting...\n");
-    exit(0);
-}
-
 int main(int argc, char **argv)
 {
     config.debug = 1;
@@ -32,14 +21,6 @@ int main(int argc, char **argv)
     config.tun6in4 = 0;
     config.ttl = DEFAULT_IPV4_TTL;
     Route_init();
-    Route_update();
-    
-    //set sigterm handler
-    struct sigaction sa;
-    sa.sa_handler = sigterm_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGTERM, &sa, NULL);
 
     //create tun interface
     char name[IFNAMSIZ] = "\0";
@@ -64,12 +45,16 @@ int main(int argc, char **argv)
     setAddress(&(config.remote), "0.0.0.0");
 
     //start tunnel execution
-    if(Ipip_exec() < 0)
+    if(Ipip_start() < 0)
     {
         DEBUG("IPIP tunneling failed");
         close(tunfd);
         exit(0);
     }
+
+
+
+    while(1);
 
     return 0;
 }

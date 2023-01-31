@@ -65,4 +65,28 @@ int setAddress(struct in_addr *s, char *addr);
 **/
 int setAddress6(struct in6_addr *s, char *addr);
 
+/**
+ * @brief Check if two IPv6 addresses are equal (fast)
+ * @param a1 Address 1
+ * @param a2 Address 2
+ * @return 1 if equal, 0 if not 
+**/
+int ipv6_isEqual(struct in6_addr a1, struct in6_addr a2);
+
+/**
+ * @brief Compare two IPv6 addresses
+ * @param a1 Address 1
+ * @param a2 Address 2
+ * @return 1 if a1 > a2, -1 if a2 > a1, 0 if a1 = a2
+**/
+int ipv6_compare(struct in6_addr a1, struct in6_addr a2);
+
+/**
+ * @brief Perform bitwise AND on two IPv6 addresses
+ * @param a1 Address 1
+ * @param a2 Address 2
+ * @return Bitwise AND of a1 and a2 (a1 & a2) 
+**/
+struct in6_addr ipv6_and(struct in6_addr a1, struct in6_addr a2);
+
 #endif

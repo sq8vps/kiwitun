@@ -13,6 +13,7 @@
 #include "common.h"
 #include "icmp.h"
 #include "route.h"
+#include <pthread.h>
 
 
 #include <string.h>
@@ -303,87 +304,84 @@ int ip6ip_decap(uint8_t *buf, int size)
     return -1;
 }
 
-int Ipip_exec()
+
+void *ipip_execTunnel(void *arg)
 {
     uint8_t buf[IP_MAX_PACKET_SIZE]; //create buffer for packets
-    
+    int size = 0; //buffer size
+
     while(1)
     {
-        int err;
-        fd_set rd_set; //read set
+        size = read(tunfd, &(buf[IPV4_HEADER_SIZE]), IP_MAX_PACKET_SIZE - IPV4_HEADER_SIZE); //receive packet and leave room for outer IP header
 
-        FD_ZERO(&rd_set); //zero out
-        FD_SET(tunfd, &rd_set); //set mask on tun descriptor
-        FD_SET(sockfd, &rd_set); //set mask on socket descriptor
-
-        err = select(((tunfd > sockfd) ? tunfd : sockfd) + 1, &rd_set, NULL, NULL, NULL); //wait for RX event
+        if(size < 0) //an error
+        {
+            DEBUG("Tunnel RX failed");
+            continue;
+        }
+        else if(size == 0) //no data
+        {
+            PRINT("There was an RX event, but no data was received\n");
+            continue;
+        }
         
-        if(err < 0) //an error occurred
-        {
-            if(errno == EINTR) //but this was due to signal
-                continue; //continue
-            else 
-                return -1; //otherwise return
-        }
-
-        if(FD_ISSET(sockfd, &rd_set)) //event on socket descriptor?
-        {
-            int size = recv(sockfd, buf, IP_MAX_PACKET_SIZE, 0); //receive encapsulated packet
-
-            if(size < 0) //an error
-            {
-                //if((errno != EWOULDBLOCK) && (errno != EAGAIN)) //error other than "would block"
-                    DEBUG("Socket RX failed");
-
-                goto continueIPIP; //continue the loop
-            }
-            else if(size == 0) //no data
-            {
-                PRINT("There was an RX event, but no data was received\n");
-                goto continueIPIP; //continue the loop
-            }
-
-            struct ip *outer = (struct ip*)(buf); //get outer IP header
-
-            if(outer->ip_v == IPVX_HEADER_VERSION_4) //is this an IPv4 packet?
-            {
-                if(outer->ip_p == IPV4_HEADER_PROTO_IPIP) //IPIP encapsulated
-                    ipip_decap(buf, size); //decapsulate
-                else if(outer->ip_p == IPV4_HEADER_PROTO_IP6IP) //IP6IP encapsulated
-                    ip6ip_decap(buf, size); //decapsulate
-                else //don't process other protocols
-                    goto continueIPIP;
-            } //not an IPv4 packet? Should not happen anyway
-            //just go further
-
-        }
-
-        continueIPIP:
-
-        if(FD_ISSET(tunfd, &rd_set)) //event on tun descriptor?
-        {
-            int size = read(tunfd, &(buf[IPV4_HEADER_SIZE]), IP_MAX_PACKET_SIZE - IPV4_HEADER_SIZE); //receive packet and leave room for outer IP header
-
-            if(size < 0) //an error
-            {
-                DEBUG("Tunnel RX failed");
-                continue;
-            }
-            else if(size == 0) //no data
-            {
-                PRINT("There was an RX event, but no data was received\n");
-                continue;
-            }
-            
-            struct ip *inner = (struct ip*)(&buf[IPV4_HEADER_SIZE]); //get inner IP header (IPv4 temporarily - protocol version is still in the same place)
-            if(inner->ip_v == IPVX_HEADER_VERSION_4) //this is an IPv4 packet
-                if(config.tun4in4) //if enabled
-                    ipip_encap(buf, size); //encapsulate and send
-            else if(inner->ip_v == IPVX_HEADER_VERSION_6) //this is an IPv6 packet
-                if(config.tun6in4) //if enabled
-                    ip6ip_encap(buf, size); //encapsulate and send
-            else //non-IP packet
-                continue; //do not process it
-        }
+        struct ip *inner = (struct ip*)(&buf[IPV4_HEADER_SIZE]); //get inner IP header (IPv4 temporarily - protocol version is still in the same place)
+        if(inner->ip_v == IPVX_HEADER_VERSION_4) //this is an IPv4 packet
+            if(config.tun4in4) //if enabled
+                ipip_encap(buf, size); //encapsulate and send
+        else if(inner->ip_v == IPVX_HEADER_VERSION_6) //this is an IPv6 packet
+            if(config.tun6in4) //if enabled
+                ip6ip_encap(buf, size); //encapsulate and send
+        else //non-IP packet
+            continue; //do not process it
     }
+}
+
+void *ipip_execSock(void *arg)
+{ 
+    uint8_t buf[IP_MAX_PACKET_SIZE]; //create buffer for packets
+    int size = 0; //buffer size
+
+    while(1)
+    {
+        size = recv(sockfd, buf, IP_MAX_PACKET_SIZE, 0); //receive encapsulated packet
+
+        if(size < 0) //an error
+        {
+            DEBUG("Socket RX failed");
+            continue;
+        }
+        else if(size == 0) //no data
+        {
+            PRINT("There was an RX event, but no data was received\n");
+            continue;
+        }
+
+        struct ip *outer = (struct ip*)(buf); //get outer IP header
+
+        if(outer->ip_v == IPVX_HEADER_VERSION_4) //is this an IPv4 packet?
+        {
+            if(outer->ip_p == IPV4_HEADER_PROTO_IPIP) //IPIP encapsulated
+                ipip_decap(buf, size); //decapsulate
+            else if(outer->ip_p == IPV4_HEADER_PROTO_IP6IP) //IP6IP encapsulated
+                ip6ip_decap(buf, size); //decapsulate
+        } //not an IPv4 packet? Should not happen anyway
+    }
+}
+
+int Ipip_start()
+{
+    pthread_t tunTh, sockTh, sock6Th;
+    if(pthread_create(&tunTh, NULL, &ipip_execTunnel, NULL) < 0) //start threads
+    {
+        DEBUG("Tunnel thread creation failed");
+        return -1;
+    }
+    if(pthread_create(&sockTh, NULL, &ipip_execSock, NULL) < 0) //start threads
+    {
+        DEBUG("IPv4 socket thread creation failed");
+        return -1;
+    }
+
+    return 0;
 }

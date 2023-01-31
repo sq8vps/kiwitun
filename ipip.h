@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 int Ipip_init(int tun);
-int Ipip_exec();
+int Ipip_start();
 
 
 #endif

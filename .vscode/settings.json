@@ -16,6 +16,8 @@
         "types.h": "c",
         "netlink.h": "c",
         "rtnetlink.h": "c",
-        "const.h": "c"
+        "const.h": "c",
+        "cstdlib": "c",
+        "pthread.h": "c"
     }
 }
