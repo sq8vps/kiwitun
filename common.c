@@ -3,6 +3,11 @@
 #include <net/if.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <getopt.h>
+#include <string.h>
+#include <stdlib.h>
+
+struct Config_s config;
 
 int setAddress(struct in_addr *s, char *addr)
 {
@@ -55,10 +60,81 @@ inline struct in6_addr ipv6_and(struct in6_addr a1, struct in6_addr a2)
 {
     struct in6_addr ret;
     for(uint8_t i = 0; i < 4; i++)
-        ret.__in6_u.__u6_addr32[i] = a1.__in6_u.__u6_addr32[i] & a1.__in6_u.__u6_addr32[i];
+        ret.__in6_u.__u6_addr32[i] = a1.__in6_u.__u6_addr32[i] & a2.__in6_u.__u6_addr32[i];
 
     return ret;
 }
 
-struct Config_s config;
+int parseArgs(int argc, char **argv)
+{
+    struct option options[] =
+    {
+        {"verbose", no_argument, 0, 'v'},
+        {"4in4", no_argument, 0, '4'},
+        {"6in4", no_argument, 0, '6'},
+        {"remote", required_argument, 0, 'r'},
+        {"refresh", required_argument, 0, 128},
+        {0, 0, 0, 0}
+    };
 
+    int c;
+
+    while (1)
+    {
+        int index = 0;
+
+        c = getopt_long(argc, argv, "v46r:", options, &index);
+
+        if (c == -1)
+            break;
+
+        switch (c)
+        {
+        case 0:
+            break;
+
+        case 'v':
+            config.debug = 1;
+            break;
+
+        case '4':
+            config.tun4in4 = 1;
+            break;
+
+        case '6':
+            config.tun6in4 = 1;
+            break;
+
+        case 'r':
+            if(setAddress(&(config.remote), optarg) < 0) //parse and set if IP
+            {
+                //if not IP, store as hostname
+                config.useHostname = 1;
+                config.hostname = malloc(strlen(optarg));
+                strcpy(config.hostname, optarg);
+            }
+            break;
+
+        case ':':
+            printf("Option -%c requires an operand\n", optopt);
+            return -1;
+            break;
+        case '?':
+
+            return -1;
+            break;
+
+        default:
+            return -1;
+            break;
+        }
+    }
+
+    if(!config.tun4in4 && !config.tun6in4)
+    {
+        printf("At least one tunneling mode must be selected.\n");
+        return -1;
+    }
+
+    return 0;
+}

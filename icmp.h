@@ -23,4 +23,18 @@
 **/
 int ICMP_send(int s, uint8_t *data, int size, in_addr_t source, uint8_t type, uint8_t code, uint32_t rest);
 
+/**
+ * @brief Send ICMP(v6) response for given IPv6 packet 
+ * @param s Raw IP (!) socket handler
+ * @param data Buffer containing IPv6 packet with header to refer to in the ICMP response
+ * @param size Buffer size
+ * @param source Source address or in6addr_any for auto selection
+ * @param type ICMP response type
+ * @param code ICMP response code
+ * @param rest ICMP respose rest of header (or 0 if not used)
+ * @return 0 on success, -1 on failure
+ * @warning Sanity check of input IPv6 packet is the responsibility of a caller.
+**/
+int ICMP_send6(int s, uint8_t *data, int size, struct in6_addr source, uint8_t type, uint8_t code, uint32_t rest);
+
 #endif

@@ -464,6 +464,31 @@ in_addr_t Route_get(in_addr_t address)
     return 0; //no matching route
 }
 
+struct in6_addr Route_get6(struct in6_addr address)
+{
+    LOCK_ROUTES6();
+    for(uint64_t i = 0; i < route6Entries; i++)
+    {
+        if(ipv6_isEqual(ipv6_and(address, routes6[i].netmask), routes6[i].address)) //route is matching
+        {
+            struct in6_addr ret = routes6[i].gateway;
+            UNLOCK_ROUTES6();
+            return ret;    
+        }
+    }
+    UNLOCK_ROUTES6();
+    return in6addr_any; //no matching route
+}
+
+in_addr_t Route_unmap(struct in6_addr address)
+{
+    if((address.__in6_u.__u6_addr32[0] == 0) && (address.__in6_u.__u6_addr32[1] == 0) 
+    && (address.__in6_u.__u6_addr16[4] == 0) && (address.__in6_u.__u6_addr16[5] == 0xFFFF)) //is this a IPv4-mapped IPv6 address? (0:0:0:0:0:FFFF:...)
+    {
+        return (in_addr_t)(address.__in6_u.__u6_addr32[3]); //return IPv4 address
+    }
+    return 0; //address not found
+}
 
 int route_NLrequestAll(int s, uint8_t *buf, size_t maxBuf, sa_family_t family)
 {

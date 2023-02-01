@@ -16,10 +16,15 @@ int tunfd = 0; //tun descriptor
 
 int main(int argc, char **argv)
 {
-    config.debug = 1;
-    config.tun4in4 = 1;
-    config.tun6in4 = 0;
     config.ttl = DEFAULT_IPV4_TTL;
+
+    setAddress(&(config.local), "0.0.0.0");
+    setAddress(&(config.remote), "0.0.0.0");
+
+    if(parseArgs(argc, argv) < 0)
+        return -1;
+
+
     Route_init();
 
     //create tun interface
@@ -41,8 +46,7 @@ int main(int argc, char **argv)
     }
     DEBUG("IPIP tunnel creation");
 
-    setAddress(&(config.local), "0.0.0.0");
-    setAddress(&(config.remote), "0.0.0.0");
+
 
     //start tunnel execution
     if(Ipip_start() < 0)

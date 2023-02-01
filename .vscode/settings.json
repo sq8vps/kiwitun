@@ -18,6 +18,10 @@
         "rtnetlink.h": "c",
         "const.h": "c",
         "cstdlib": "c",
-        "pthread.h": "c"
+        "pthread.h": "c",
+        "stdint.h": "c",
+        "limits": "c",
+        "icmp.h": "c",
+        "icmp6.h": "c"
     }
 }

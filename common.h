@@ -18,6 +18,8 @@
 
 #define IPV6_HEADER_SIZE 40
 
+#define IPV6_HEADER_PROTO_ICMP6 0x3A
+
 
 #define ICMP_HEADER_SIZE 8
 #define ICMP_ADDITIONAL_DATA_SIZE 8
@@ -29,13 +31,28 @@ struct Config_s
     uint8_t debug : 1; //debug (verbose) mode enabled
     uint8_t tun4in4 : 1; //enable IPIP (4-in-4) tunneling
     uint8_t tun6in4 : 1; //enable IP6IP (6-in-4) tunneling
+    uint8_t useHostname : 1; //use hostname as a remote address rather than IP
+    uint8_t ttl; //TTL/hop limit value for outer IP header
 
-    uint8_t ttl; //TTL value for outer IP header
     struct in_addr local, remote; //local and remote IPv4 address (INADDR_ANY/NULL for automatic selection)
-    struct in6_addr local6, remote6; //local and remote IPv6 address (inaddr6_any for )
+    char *hostname; //hostname as a remote address
+    uint64_t hostnameRefresh; //hostname refresh interval in minutes
+    struct in6_addr local6, remote6; //local and remote IPv6 address (inaddr6_any for automatic selection)
 };
 
 extern struct Config_s config;
+
+/**
+ * @brief IPv6 pseudo-header for checksum calculation 
+**/
+struct ip6_pseudohdr
+{
+    struct in6_addr ip6_src; //source address
+    struct in6_addr ip6_dst; //destination address
+    uint32_t ip6_len; //payload length
+    uint8_t zeros[3]; //must be zeroed
+    uint8_t ip6_next; //protocol type
+};
 
 #define PRINT(...) {\
     if(config.debug)\
@@ -88,5 +105,13 @@ int ipv6_compare(struct in6_addr a1, struct in6_addr a2);
  * @return Bitwise AND of a1 and a2 (a1 & a2) 
 **/
 struct in6_addr ipv6_and(struct in6_addr a1, struct in6_addr a2);
+
+
+/**
+ * @brief Parse input arguments and store them in configuration structure
+ * @param argc Argument count
+ * @param argv Arguments 
+**/
+int parseArgs(int argc, char **argv);
 
 #endif
