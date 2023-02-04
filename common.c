@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdlib.h>
+#include <linux/if.h>
 
 struct Config_s config;
 
@@ -13,7 +14,6 @@ int setAddress(struct in_addr *s, char *addr)
 {
     if(inet_pton(AF_INET, addr, s) < 1) //convert
     {
-        printf("%s is not a correct IPv4 address\n", addr);
         return -1;
     }
     return 0;
@@ -23,7 +23,6 @@ int setAddress6(struct in6_addr *s, char *addr)
 {
     if(inet_pton(AF_INET6, addr, s) < 1) //convert
     {
-        printf("%s is not a correct IPv6 address\n", addr);
         return -1;
     }
     return 0;
@@ -67,13 +66,20 @@ inline struct in6_addr ipv6_and(struct in6_addr a1, struct in6_addr a2)
 
 int parseArgs(int argc, char **argv)
 {
+    #define ARG_REFRESH 128
+    #define ARG_VERSION 129
     struct option options[] =
     {
         {"verbose", no_argument, 0, 'v'},
         {"4in4", no_argument, 0, '4'},
         {"6in4", no_argument, 0, '6'},
         {"remote", required_argument, 0, 'r'},
-        {"refresh", required_argument, 0, 128},
+        {"local", required_argument, 0, 'l'},
+        {"refresh", required_argument, 0, ARG_REFRESH},
+        {"ttl", required_argument, 0, 't'},
+        {"version", no_argument, 0, ARG_VERSION},
+        {"interface", no_argument, 0, 'i'},
+        {"daemon", no_argument, 0, 'd'},
         {0, 0, 0, 0}
     };
 
@@ -83,56 +89,102 @@ int parseArgs(int argc, char **argv)
     {
         int index = 0;
 
-        c = getopt_long(argc, argv, "v46r:", options, &index);
+        c = getopt_long(argc, argv, "v46r:l:t:i:d", options, &index);
 
         if (c == -1)
             break;
 
         switch (c)
         {
-        case 0:
+            case 0:
             break;
 
-        case 'v':
+            case 'v': //verbose output
             config.debug = 1;
             break;
 
-        case '4':
+            case '4': //enable 4in4 tunneling
             config.tun4in4 = 1;
             break;
 
-        case '6':
+            case '6': //enable 6in4 tunneling
             config.tun6in4 = 1;
             break;
 
-        case 'r':
+            case 'r': //set remote IPv4
             if(setAddress(&(config.remote), optarg) < 0) //parse and set if IP
             {
                 //if not IP, store as hostname
-                config.useHostname = 1;
-                config.hostname = malloc(strlen(optarg));
+                setAddress(&(config.remote), "0.0.0.0"); //zero-out first
+                config.hostname = malloc(strlen(optarg) + 1);
+                if(config.hostname == NULL)
+                {
+                    printf("malloc failure\n");
+                    return -1;
+                }
                 strcpy(config.hostname, optarg);
             }
             break;
 
-        case ':':
-            printf("Option -%c requires an operand\n", optopt);
+            case 'l': //set local IPv4
+            if(setAddress(&(config.local), optarg) < 0) //parse and set if IP
+            {
+                printf("Local tunnel endpoint IPv4 address %s is invalid.\n", optarg);
+                return -1;
+            }
+            break;
+
+            case 't': //TTL/hop limit
+            config.ttl = atoi(optarg);
+            if(config.ttl == 0)
+            {
+                printf("TTL/hop limit must be in range 1 to 255.\n");
+                return -1;
+            }
+            break;
+
+            case ARG_REFRESH: //hostname refresh interval
+            config.hostnameRefresh = atoi(optarg);
+            break;
+
+            case 'i': //interface name
+            config.ifName = malloc(strlen(optarg) + 1);
+            if(config.ifName == NULL)
+            {
+                printf("malloc failure\n");
+                return -1;
+            }
+            strncpy(config.ifName, optarg, IFNAMSIZ);
+            break;
+
+            case 'd': //do not daemonise
+            config.noDaemonise = 1;
+            break;
+
+            case ARG_VERSION: //version string
+            printf(KIWITUN_VERSION_STRING);
+            exit(0);
+            break;
+
+
+            case ':':
             return -1;
             break;
-        case '?':
 
+            case '?':
             return -1;
             break;
 
-        default:
+            default:
             return -1;
             break;
         }
     }
 
-    if(!config.tun4in4 && !config.tun6in4)
+    if(!config.tun4in4 && !config.tun6in4) //check if at least one mode is selected
     {
-        printf("At least one tunneling mode must be selected.\n");
+        printf(KIWITUN_VERSION_STRING);
+        printf("\nTo start kiwitun at least one tunneling mode must be selected.\nUse \"kiwitun --help\" to print help page.\n");
         return -1;
     }
 

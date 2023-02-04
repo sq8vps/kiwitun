@@ -26,18 +26,23 @@
 #define ICMP_DEFAULT_TTL 64
 #define ICMP_HEADER_CHECKSUM_POS 2
 
+
+#define DEFAULT_HOSTNAME_REFRESH 60 //default hostname refresh time in minutes
+
+#define KIWITUN_VERSION_STRING "kiwitun v. 0.0.1\nAn open-source module-independent tunneling engine\nLicensed under GNU GPL 3.0.\nhttps://github.com/sq8vps/kiwitun\n"
+
 struct Config_s
 {
     uint8_t debug : 1; //debug (verbose) mode enabled
     uint8_t tun4in4 : 1; //enable IPIP (4-in-4) tunneling
     uint8_t tun6in4 : 1; //enable IP6IP (6-in-4) tunneling
-    uint8_t useHostname : 1; //use hostname as a remote address rather than IP
+    uint8_t noDaemonise : 1; //do not start as a daemon
     uint8_t ttl; //TTL/hop limit value for outer IP header
-
     struct in_addr local, remote; //local and remote IPv4 address (INADDR_ANY/NULL for automatic selection)
-    char *hostname; //hostname as a remote address
-    uint64_t hostnameRefresh; //hostname refresh interval in minutes
     struct in6_addr local6, remote6; //local and remote IPv6 address (inaddr6_any for automatic selection)
+    char *hostname; //hostname as a remote address
+    uint32_t hostnameRefresh; //hostname refresh interval in minutes
+    char *ifName; //interface name
 };
 
 extern struct Config_s config;
@@ -111,6 +116,7 @@ struct in6_addr ipv6_and(struct in6_addr a1, struct in6_addr a2);
  * @brief Parse input arguments and store them in configuration structure
  * @param argc Argument count
  * @param argv Arguments 
+ * @return 0 on success, -1 on failure (program must be terminated)
 **/
 int parseArgs(int argc, char **argv);
 
