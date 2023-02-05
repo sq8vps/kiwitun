@@ -1,3 +1,20 @@
+/*
+    This file is part of kiwitun.
+
+    Kiwitun is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Kiwitun is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with kiwitun.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "icmp.h"
 #include <sys/socket.h>
 
@@ -81,7 +98,7 @@ int ICMP_send(int s, uint8_t *data, int size, in_addr_t source, uint8_t type, ui
     uint8_t buf[2 * IPV4_HEADER_SIZE + ICMP_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE]; //prepare buffer
     if(size < (IPV4_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE)) //check if there is enough data to send ICMP message
     {
-        PRINT("Not enough data to send ICMP message\n");
+        PRINT(LOG_DEBUG, "Not enough data to send ICMP message\n");
         return -1;
     }
     
@@ -116,12 +133,12 @@ int ICMP_send(int s, uint8_t *data, int size, in_addr_t source, uint8_t type, ui
 
     if(sent < 0) //error
     {
-        DEBUG("ICMP packet TX failed");
+        DEBUG(LOG_ERR, "ICMP packet TX failed");
         return -1;
     }
     else if(sent != (2 * IPV4_HEADER_SIZE + ICMP_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE)) //number of bytes actually sent is different than number of bytes to be sent
     {
-        PRINT("ICMP packet TX problem: %d bytes to send, %d actually sent\n", 2 * IPV4_HEADER_SIZE + ICMP_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE, sent);
+        PRINT(LOG_WARNING, "ICMP packet TX problem: %d bytes to send, %d actually sent\n", 2 * IPV4_HEADER_SIZE + ICMP_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE, sent);
         return -1;
     }
 
@@ -135,7 +152,7 @@ int ICMP_send6(int s, uint8_t *data, int size, struct in6_addr source, uint8_t t
     uint8_t buf[2 * IPV6_HEADER_SIZE + ICMP_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE]; //prepare buffer
     if(size < (IPV6_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE)) //check if there is enough data to send ICMP message
     {
-        PRINT("Not enough data to send ICMP message\n");
+        PRINT(LOG_ERR, "Not enough data to send ICMP message\n");
         return -1;
     }
     
@@ -168,12 +185,12 @@ int ICMP_send6(int s, uint8_t *data, int size, struct in6_addr source, uint8_t t
 
     if(sent < 0) //error
     {
-        DEBUG("ICMPv6 packet TX failed");
+        DEBUG(LOG_ERR, "ICMPv6 packet TX failed");
         return -1;
     }
     else if(sent != (2 * IPV6_HEADER_SIZE + ICMP_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE)) //number of bytes actually sent is different than number of bytes to be sent
     {
-        PRINT("ICMPv6 packet TX problem: %d bytes to send, %d actually sent\n", 2 * IPV6_HEADER_SIZE + ICMP_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE, sent);
+        PRINT(LOG_WARNING, "ICMPv6 packet TX problem: %d bytes to send, %d actually sent\n", 2 * IPV6_HEADER_SIZE + ICMP_HEADER_SIZE + ICMP_ADDITIONAL_DATA_SIZE, sent);
         return -1;
     }
 

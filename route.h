@@ -1,3 +1,31 @@
+/*
+    This file is part of kiwitun.
+
+    Kiwitun is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Kiwitun is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with kiwitun.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/**
+ * @file route.h
+ * @brief Routing module
+ * 
+ * Handles packet routing. Gets routes from the kernel and stores them locally.
+ * Uses only Netlink and Rtnetlink Linux sockets.
+ * Provides route lookup for given address:
+ * 1. IPv4 gateway for IPv4 destination
+ * 2. IPv6 (or IPv4-mapped IPv6) gateway for IPv6 destination
+ * Additionally decodes IPv4-mapped IPv6 to standard IPv4.
+*/
 #ifndef ROUTE_H_
 #define ROUTE_H_
 

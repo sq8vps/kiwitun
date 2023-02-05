@@ -1,3 +1,20 @@
+/*
+    This file is part of kiwitun.
+
+    Kiwitun is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Kiwitun is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with kiwitun.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 /**
  * @file route.c
  * @brief Route selection module
@@ -172,7 +189,7 @@ int route_resizeTable(uint64_t entryCount)
     routes = realloc(routes, routeBlocks * ROUTING_TABLE_BLOCK_SIZE * sizeof(struct Route_s)); //realloc
     if(routes == NULL) //failure
     {
-        PRINT("IPv4 routing table memory allocation failed\n");
+        PRINT(LOG_ERR, "IPv4 routing table memory allocation failed\n");
         return -1;
     }
 
@@ -196,7 +213,7 @@ int route_resizeTable6(uint64_t entryCount)
     routes6 = realloc(routes6, route6Blocks * ROUTING_TABLE_BLOCK_SIZE * sizeof(struct Route6_s)); //realloc
     if(routes6 == NULL) //failure
     {
-        PRINT("IPv6 routing table memory allocation failed\n");
+        PRINT(LOG_ERR, "IPv6 routing table memory allocation failed\n");
         return -1;
     }
 
@@ -416,7 +433,7 @@ int64_t route_receive(int s, uint8_t *buf, size_t maxBuf, int seq)
         readSize = recv(s, buf, maxBuf - bufSize, 0); //try to receive
         if(readSize < 0) //error
         {
-            DEBUG("Netlink read failed");
+            DEBUG(LOG_ERR, "Netlink read failed");
             return -1;
         }
 
@@ -424,7 +441,7 @@ int64_t route_receive(int s, uint8_t *buf, size_t maxBuf, int seq)
 
         if((NLMSG_OK(nl, readSize) == 0) || (nl->nlmsg_type == NLMSG_ERROR)) //check header validity
         {
-            PRINT("Received netlink header is invalid!\n");
+            PRINT(LOG_WARNING, "Received netlink header is invalid!\n");
             return -1;
         }
 
@@ -506,7 +523,7 @@ int route_NLrequestAll(int s, uint8_t *buf, size_t maxBuf, sa_family_t family)
 
     if(send(s, nl, nl->nlmsg_len, 0) < 0) //write request
     {
-        DEBUG("Netlink write failed");
+        DEBUG(LOG_ERR, "Netlink write failed");
         close(s);
         return -1;
     }
@@ -525,13 +542,13 @@ void *route_listenForUpdates(void *arg)
     int s = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     if(s < 0)
     {
-        DEBUG("Netlink socket open failed");
+        DEBUG(LOG_ERR, "Netlink socket open failed");
         return (void*)-1;
     }
 
     if(bind(s, (struct sockaddr*)&addr, sizeof(addr)) < 0)
     {
-        DEBUG("Netlink socket bind failed");
+        DEBUG(LOG_ERR, "Netlink socket bind failed");
         return (void*)-1;
     }
 
@@ -548,7 +565,7 @@ void *route_listenForUpdates(void *arg)
         size = recv(s, buf, NETLINK_BUF_SIZE, 0); //try to receive
         if(size < 0) //error
         {
-            DEBUG("Netlink read failed");
+            DEBUG(LOG_ERR, "Netlink read failed");
             continue;
         }
 
@@ -556,7 +573,7 @@ void *route_listenForUpdates(void *arg)
 
         if((NLMSG_OK(nl, size) == 0) || (nl->nlmsg_type == NLMSG_ERROR)) //check header validity
         {
-            PRINT("Received netlink header is invalid!\n");
+            PRINT(LOG_WARNING, "Received netlink header is invalid!\n");
             continue;
         }
 
@@ -614,7 +631,7 @@ int route_getAll()
 
     if((s = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE)) < 0) //create netlink socket
     {
-        DEBUG("Netlink socket creation failed");
+        DEBUG(LOG_ERR, "Netlink socket creation failed");
         return -1;
     }
 
@@ -640,7 +657,7 @@ int route_getAll()
 
     if((s = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE)) < 0) //create netlink socket
     {
-        DEBUG("Netlink socket creation failed");
+        DEBUG(LOG_ERR, "Netlink socket creation failed");
         return -1;
     }
 
@@ -679,7 +696,7 @@ int Route_init()
     
     if(pthread_create(&listener, NULL, &route_listenForUpdates, NULL) < 0) //create listener thread
     {
-        DEBUG("Listener thread creation failed");
+        DEBUG(LOG_ERR, "Listener thread creation failed");
         return -1;
     }
 

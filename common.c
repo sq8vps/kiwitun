@@ -1,3 +1,20 @@
+/*
+    This file is part of kiwitun.
+
+    Kiwitun is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Kiwitun is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with kiwitun.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "common.h"
 #include <sys/ioctl.h>
 #include <net/if.h>
@@ -26,6 +43,20 @@ int setAddress6(struct in6_addr *s, char *addr)
         return -1;
     }
     return 0;
+}
+
+void printAddress(int logLevel, struct in_addr *addr)
+{
+    char tmp[200];
+    inet_ntop(AF_INET, addr, tmp, 200);
+    PRINT(logLevel, "%s", tmp);
+}
+
+void printAddress6(int logLevel, struct in6_addr *addr)
+{
+    char tmp[200];
+    inet_ntop(AF_INET6, addr, tmp, 200);
+    PRINT(logLevel, "%s", tmp);
 }
 
 inline int ipv6_isEqual(struct in6_addr a1, struct in6_addr a2)
@@ -64,10 +95,13 @@ inline struct in6_addr ipv6_and(struct in6_addr a1, struct in6_addr a2)
     return ret;
 }
 
+const char helpPage[];
+
 int parseArgs(int argc, char **argv)
 {
     #define ARG_REFRESH 128
     #define ARG_VERSION 129
+    #define ARG_LOGLEVEL 130
     struct option options[] =
     {
         {"verbose", no_argument, 0, 'v'},
@@ -79,7 +113,9 @@ int parseArgs(int argc, char **argv)
         {"ttl", required_argument, 0, 't'},
         {"version", no_argument, 0, ARG_VERSION},
         {"interface", no_argument, 0, 'i'},
-        {"daemon", no_argument, 0, 'd'},
+        {"no-daemon", no_argument, 0, 'd'},
+        {"log-level", required_argument, 0, ARG_LOGLEVEL},
+        {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
 
@@ -89,7 +125,7 @@ int parseArgs(int argc, char **argv)
     {
         int index = 0;
 
-        c = getopt_long(argc, argv, "v46r:l:t:i:d", options, &index);
+        c = getopt_long(argc, argv, "v46r:l:t:i:dh", options, &index);
 
         if (c == -1)
             break;
@@ -158,7 +194,11 @@ int parseArgs(int argc, char **argv)
             break;
 
             case 'd': //do not daemonise
-            config.noDaemonise = 1;
+            config.noDaemon = 1;
+            break;
+
+            case ARG_LOGLEVEL:
+            config.logLevel = atoi(optarg);
             break;
 
             case ARG_VERSION: //version string
@@ -166,6 +206,10 @@ int parseArgs(int argc, char **argv)
             exit(0);
             break;
 
+            case 'h': //print help page
+            printf("%s", helpPage);
+            exit(0);
+            break;
 
             case ':':
             return -1;
@@ -188,5 +232,24 @@ int parseArgs(int argc, char **argv)
         return -1;
     }
 
+
     return 0;
 }
+
+const char helpPage[] = "Usage: kiwitun [options]\n"\
+                        "Tunneling modes:\n"\
+                        " -4, --4in4\t\tenable IPIP (4in4) tunneling"\
+                        " -6, --6in4\tenable IP6IP (6in4) tunneling"\
+                        "Tunnel settings:\n"\
+                        " -r, --remote=address\tuse given hostname or IP as a remote endpoint address. The routing table is used when remote hostname/address is not set\n"\
+                        " -l, --local=address\tuse given IP as a local endpoint address. Kernel selects appropriate address if not set\n"\
+                        " -t, --ttl=value\tuse given TTL/hop limit value for encapsulated and ICMP packets\n"\
+                        " -i, --ifname=name\tuse given TUN interface name. Kernel selects appropriate name if not set\n"\
+                        "Other settings:\n"\
+                        " --refresh=time\tresolve remote endpoint hostname every given period of time (given in minutes)\n"\
+                        " -d, --no-daemon\tdo not run as a daemon\n"\
+                        " --log-level=level\tset logging level. Lower value means less logging. Valid values are 0 to 7 (values higher than 7 are clipped to 7). --log-level=7 is equivalent to --verbose. Setting it to 0 should disable logging\n"\
+                        " -v, --verbose\t\tverbose/debug mode: print/log everything. Equivalent to --log-level=7\n"\
+                        "Version and help:\n"\
+                        " --version\t\tprint version information\n"\
+                        " -h, --help\t\tprint help page\n";

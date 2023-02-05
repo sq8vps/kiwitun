@@ -1,9 +1,34 @@
+/*
+    This file is part of kiwitun.
+
+    Kiwitun is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Kiwitun is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with kiwitun.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/**
+ * @file common.h
+ * @brief Common and uncategorized defines, macros, variables and functions. Configuration structure is defined here.
+*/
+
 #ifndef COMMON_H_
 #define COMMON_H_
 
 #include <stdio.h>
 #include <stdint.h>
 #include <netinet/ip.h>
+#include <syslog.h>
+#include <errno.h>
+#include <string.h>
 
 #define IP_MAX_PACKET_SIZE 65535
 #define IPV4_HEADER_SIZE 20
@@ -20,7 +45,6 @@
 
 #define IPV6_HEADER_PROTO_ICMP6 0x3A
 
-
 #define ICMP_HEADER_SIZE 8
 #define ICMP_ADDITIONAL_DATA_SIZE 8
 #define ICMP_DEFAULT_TTL 64
@@ -29,20 +53,21 @@
 
 #define DEFAULT_HOSTNAME_REFRESH 60 //default hostname refresh time in minutes
 
-#define KIWITUN_VERSION_STRING "kiwitun v. 0.0.1\nAn open-source module-independent tunneling engine\nLicensed under GNU GPL 3.0.\nhttps://github.com/sq8vps/kiwitun\n"
+#define KIWITUN_VERSION_STRING "kiwitun v. 1.0.0\nAn open-source module-independent tunneling engine\nLicensed under GNU GPL 3.0.\nhttps://github.com/sq8vps/kiwitun\n"
 
 struct Config_s
 {
     uint8_t debug : 1; //debug (verbose) mode enabled
     uint8_t tun4in4 : 1; //enable IPIP (4-in-4) tunneling
     uint8_t tun6in4 : 1; //enable IP6IP (6-in-4) tunneling
-    uint8_t noDaemonise : 1; //do not start as a daemon
+    uint8_t noDaemon : 1; //do not start as a daemon
     uint8_t ttl; //TTL/hop limit value for outer IP header
     struct in_addr local, remote; //local and remote IPv4 address (INADDR_ANY/NULL for automatic selection)
     struct in6_addr local6, remote6; //local and remote IPv6 address (inaddr6_any for automatic selection)
     char *hostname; //hostname as a remote address
     uint32_t hostnameRefresh; //hostname refresh interval in minutes
     char *ifName; //interface name
+    uint8_t logLevel; //logging level (Syslog values)
 };
 
 extern struct Config_s config;
@@ -59,14 +84,18 @@ struct ip6_pseudohdr
     uint8_t ip6_next; //protocol type
 };
 
-#define PRINT(...) {\
-    if(config.debug)\
-        printf(__VA_ARGS__);\
+#define PRINT(level, ...) {\
+    if(config.noDaemon && (level <= config.logLevel)){\
+        printf(__VA_ARGS__);}\
+    else{\
+        syslog(level, __VA_ARGS__);}\
 }
 
-#define DEBUG(arg) {\
-    if(config.debug)\
-        perror(arg);\
+#define DEBUG(level, arg) {\
+    if(config.noDaemon && (level <= config.logLevel)){\
+        perror(arg);}\
+    else{\
+        syslog(level, "%s: %s\n", arg, strerror(errno));}\
 }
 
 #define DEFAULT_IPV4_TTL 64 //default TTL for IPv4 encapsulated packets
@@ -86,6 +115,20 @@ int setAddress(struct in_addr *s, char *addr);
  * @return 0 on success, -1 on failure
 **/
 int setAddress6(struct in6_addr *s, char *addr);
+
+/**
+ * @brief Print IPv4 address
+ * @param logLevel Logging level
+ * @param addr Address structure
+**/
+void printAddress(int logLevel, struct in_addr *addr);
+
+/**
+ * @brief Print IPv6 address
+ * @param logLevel Logging level
+ * @param addr Address structure
+**/
+void printAddress6(int logLevel, struct in6_addr *addr);
 
 /**
  * @brief Check if two IPv6 addresses are equal (fast)

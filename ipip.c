@@ -1,3 +1,20 @@
+/*
+    This file is part of kiwitun.
+
+    Kiwitun is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Kiwitun is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with kiwitun.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "ipip.h"
 
 #include <linux/if.h>
@@ -151,7 +168,7 @@ int ipip_encap(uint8_t *buf, int size)
 
     if(inner->ip_hl != (IPV4_HEADER_SIZE / 4)) //drop packets than don't have standard headers
     {
-        PRINT("Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
+        PRINT(LOG_DEBUG, "Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
         return -1;
     }
 
@@ -159,7 +176,7 @@ int ipip_encap(uint8_t *buf, int size)
     //check if packet is too big for encapsulation (or length field in header is broken)
     if(ntohs(inner->ip_len) != size)
     {
-        PRINT("Packet received on tunnel interface has inconsistent size or is too big to be tunneled\n");
+        PRINT(LOG_DEBUG, "Packet received on tunnel interface has inconsistent size or is too big to be tunneled\n");
         return -1;
     }
 
@@ -169,7 +186,7 @@ int ipip_encap(uint8_t *buf, int size)
     else if(inner->ip_ttl == 1) //TTL=1, will be 0 after decrementation, send ICMP Time Exceeded
     {
         //time exceeded, send ICMP response: Time Exceeded
-        PRINT("Time exceeded during IPIP encapsulation\n");
+        PRINT(LOG_DEBUG, "Time exceeded during IPIP encapsulation\n");
         return ICMP_send(sockfd, &(buf[IPV4_HEADER_SIZE]), size, (config.local.s_addr == 0) ? 0 : config.local.s_addr,
                     ICMP_TIME_EXCEEDED, ICMP_EXC_TTL, 0);
     }
@@ -201,7 +218,7 @@ int ipip_encap(uint8_t *buf, int size)
 
     if(dest.sin_addr.s_addr == 0) //do not send when remote address is not known
     {
-        PRINT("Unknown remote address!\n");
+        PRINT(LOG_DEBUG, "Unknown remote address!\n");
         //set ICMP destination unreachable - host unknown
         ICMP_send(sockfd, &(buf[IPV4_HEADER_SIZE]), size, (config.local.s_addr == 0) ? 0 : config.local.s_addr,
             ICMP_DEST_UNREACH, ICMP_HOST_UNKNOWN, 0);
@@ -212,7 +229,7 @@ int ipip_encap(uint8_t *buf, int size)
 
     if(outer->ip_dst.s_addr == inner->ip_src.s_addr) //drop if tunnel destination is the same as inner packet source (RFC 2003)
     {
-        PRINT("Dropping packet: tunnel destination = datagram source\n");
+        PRINT(LOG_DEBUG, "Dropping packet: tunnel destination = datagram source\n");
         return -1;
     }
     
@@ -220,12 +237,12 @@ int ipip_encap(uint8_t *buf, int size)
     
     if(sent < 0) //error
     {
-        DEBUG("Encapsulated packet TX failed");
+        DEBUG(LOG_ERR, "Encapsulated packet TX failed");
         return -1;
     }
     else if(sent != (size + IPV4_HEADER_SIZE)) //number of bytes actually sent is different than number of bytes to be sent
     {
-        PRINT("Encapsulated packet TX problem: %d bytes to send, %d actually sent\n", size + IPV4_HEADER_SIZE, sent);
+        PRINT(LOG_WARNING, "Encapsulated packet TX problem: %d bytes to send, %d actually sent\n", size + IPV4_HEADER_SIZE, sent);
         return -1;
     }
 
@@ -250,7 +267,7 @@ int ip6ip_encap(uint8_t *buf, int size)
     //check if packet is too big for encapsulation (or length field in header is broken)
     if(ntohs(inner->ip6_ctlun.ip6_un1.ip6_un1_plen) != (size - IPV6_HEADER_SIZE))
     {
-        PRINT("Packet received on tunnel interface has inconsistent size or is too big to be tunneled\n");
+        PRINT(LOG_DEBUG, "Packet received on tunnel interface has inconsistent size or is too big to be tunneled\n");
         return -1;
     }
 
@@ -259,7 +276,7 @@ int ip6ip_encap(uint8_t *buf, int size)
         return 0;
     else if(inner->ip6_ctlun.ip6_un1.ip6_un1_hlim == 1) //Hop limit=1, will be 0 after decrementation, send ICMP Time Exceeded
     {
-        PRINT("Time exceeded during IP6IP encapsulation\n");
+        PRINT(LOG_DEBUG, "Time exceeded during IP6IP encapsulation\n");
         //time exceeded, send ICMP response: Time Exceeded
         return ICMP_send6(sock6fd, &(buf[IPV4_HEADER_SIZE]), size, (ipv6_isEqual(config.local6, in6addr_any)) ? in6addr_any : config.local6,
                      ICMP6_TIME_EXCEEDED, ICMP6_TIME_EXCEED_TRANSIT, 0);
@@ -292,7 +309,7 @@ int ip6ip_encap(uint8_t *buf, int size)
 
     if(dest.sin_addr.s_addr == 0) //do not send when remote address is not known
     {
-        PRINT("Unknown remote address!\n");
+        PRINT(LOG_DEBUG, "Unknown remote address!\n");
         //set ICMP destination unreachable - host unknown
         return ICMP_send6(sock6fd, &(buf[IPV4_HEADER_SIZE]), size, (ipv6_isEqual(config.local6, in6addr_any)) ? in6addr_any : config.local6,
                      ICMP6_DST_UNREACH, ICMP6_DST_UNREACH_NOROUTE, 0);
@@ -305,12 +322,12 @@ int ip6ip_encap(uint8_t *buf, int size)
     
     if(sent < 0) //error
     {
-        DEBUG("Encapsulated packet TX failed");
+        DEBUG(LOG_ERR, "Encapsulated packet TX failed");
         return -1;
     }
     else if(sent != (size + IPV4_HEADER_SIZE)) //number of bytes actually sent is different than number of bytes to be sent
     {
-        PRINT("Encapsulated packet TX problem: %d bytes to send, %d actually sent\n", size + IPV4_HEADER_SIZE, sent);
+        PRINT(LOG_WARNING, "Encapsulated packet TX problem: %d bytes to send, %d actually sent\n", size + IPV4_HEADER_SIZE, sent);
         return -1;
     }
 
@@ -327,7 +344,7 @@ int ipip_decap(uint8_t *buf, int size)
 {
     if(size < (2 * IPV4_HEADER_SIZE)) //the encapsulated packet must contain at least both headers
     {
-        PRINT("Received IPIP-like packet, but it is too short (%d bytes)\n", size);
+        PRINT(LOG_DEBUG, "Received IPIP-like packet, but it is too short (%d bytes)\n", size);
         return -1;
     }
     
@@ -349,7 +366,7 @@ int ipip_decap(uint8_t *buf, int size)
     ipv4_checksum((uint8_t*)outer, outer->ip_hl * 4); //recalculate checksum
     if(oldSum != outer->ip_sum) //checksum does not match
     {
-        PRINT("Outer packet checksum check failed\n");
+        PRINT(LOG_DEBUG, "Outer packet checksum check failed\n");
         return -1;
     }
 
@@ -357,20 +374,20 @@ int ipip_decap(uint8_t *buf, int size)
     ipv4_checksum((uint8_t*)inner, inner->ip_hl * 4); //recalculate checksum
     if(oldSum != inner->ip_sum) //checksum does not match
     {
-        PRINT("Inner packet checksum check failed\n");
+        PRINT(LOG_DEBUG, "Inner packet checksum check failed\n");
         return -1;
     }
 
 
     if(outer->ip_hl != (IPV4_HEADER_SIZE / 4)) //drop packets than don't have standard headers
     {
-        PRINT("Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
+        PRINT(LOG_DEBUG, "Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
         return -1;
     }
 
     if(inner->ip_hl != (IPV4_HEADER_SIZE / 4)) //drop packets than don't have standard headers
     {
-        PRINT("Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
+        PRINT(LOG_DEBUG, "Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
         return -1;
     }
 
@@ -379,7 +396,7 @@ int ipip_decap(uint8_t *buf, int size)
 
     if(ntohs(inner->ip_len) != (size - IPV4_HEADER_SIZE)) //inner packet has different length than specified in header
     {
-        PRINT("Packet length inconsistent (header claims %d bytes, actually has %d bytes)\n", ntohs(inner->ip_len), size - IPV4_HEADER_SIZE);
+        PRINT(LOG_DEBUG, "Packet length inconsistent (header claims %d bytes, actually has %d bytes)\n", ntohs(inner->ip_len), size - IPV4_HEADER_SIZE);
         return -1;
     }
 
@@ -387,12 +404,12 @@ int ipip_decap(uint8_t *buf, int size)
     
     if(written < 0) //error
     {
-        DEBUG("Decapsulated packet write failed");
+        DEBUG(LOG_ERR, "Decapsulated packet write failed");
         return -1;
     }
     else if(written != (size - IPV4_HEADER_SIZE)) //number of bytes actually sent is different than number of bytes to be sent
     {
-        PRINT("Decapsulated packet write problem: %d bytes to write, %d actually written\n", size - IPV4_HEADER_SIZE, written);
+        PRINT(LOG_WARNING, "Decapsulated packet write problem: %d bytes to write, %d actually written\n", size - IPV4_HEADER_SIZE, written);
         return -1;
     }
 
@@ -409,7 +426,7 @@ int ip6ip_decap(uint8_t *buf, int size)
 {
     if(size < (IPV4_HEADER_SIZE + IPV6_HEADER_SIZE)) //the encapsulated packet must contain at least both headers
     {
-        PRINT("Received IP6IP-like packet, but it is too short (%d bytes)\n", size);
+        PRINT(LOG_DEBUG, "Received IP6IP-like packet, but it is too short (%d bytes)\n", size);
         return -1;
     }
     
@@ -431,13 +448,13 @@ int ip6ip_decap(uint8_t *buf, int size)
     ipv4_checksum((uint8_t*)outer, outer->ip_hl * 4); //recalculate checksum
     if(oldSum != outer->ip_sum) //checksum does not match
     {
-        PRINT("Outer packet checksum check failed\n");
+        PRINT(LOG_DEBUG, "Outer packet checksum check failed\n");
         return -1;
     }
 
     if(outer->ip_hl != (IPV4_HEADER_SIZE / 4)) //drop packets than don't have standard headers
     {
-        PRINT("Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
+        PRINT(LOG_DEBUG, "Blocking IPv4 packet with header length other than %d bytes.\n", IPV4_HEADER_SIZE);
         return -1;
     }
 
@@ -446,7 +463,7 @@ int ip6ip_decap(uint8_t *buf, int size)
 
     if(ntohs(inner->ip6_plen) != (size - IPV4_HEADER_SIZE - IPV6_HEADER_SIZE)) //inner packet has different length than specified in header
     {
-        PRINT("Packet length inconsistent (header claims %d bytes, actually has %d bytes)\n", ntohs(inner->ip6_plen), size - IPV4_HEADER_SIZE - IPV6_HEADER_SIZE);
+        PRINT(LOG_DEBUG, "Packet length inconsistent (header claims %d bytes, actually has %d bytes)\n", ntohs(inner->ip6_plen), size - IPV4_HEADER_SIZE - IPV6_HEADER_SIZE);
         return -1;
     }
 
@@ -454,12 +471,12 @@ int ip6ip_decap(uint8_t *buf, int size)
     
     if(written < 0) //error
     {
-        DEBUG("Decapsulated packet write failed");
+        DEBUG(LOG_ERR, "Decapsulated packet write failed");
         return -1;
     }
     else if(written != (size - IPV4_HEADER_SIZE)) //number of bytes actually sent is different than number of bytes to be sent
     {
-        PRINT("Decapsulated packet write problem: %d bytes to write, %d actually written\n", size - IPV4_HEADER_SIZE, written);
+        PRINT(LOG_WARNING, "Decapsulated packet write problem: %d bytes to write, %d actually written\n", size - IPV4_HEADER_SIZE, written);
         return -1;
     }
 
@@ -478,12 +495,12 @@ void *ipip_execTunnel(void *arg)
 
         if(size < 0) //an error
         {
-            DEBUG("Tunnel RX failed");
+            DEBUG(LOG_ERR, "Tunnel RX failed");
             continue;
         }
         else if(size == 0) //no data
         {
-            PRINT("There was an RX event, but no data was received\n");
+            PRINT(LOG_WARNING, "There was an RX event, but no data was received\n");
             continue;
         }
 
@@ -515,12 +532,12 @@ void *ipip_execSock(void *arg)
 
         if(size < 0) //an error
         {
-            DEBUG("Socket RX failed");
+            DEBUG(LOG_ERR, "Socket RX failed");
             continue;
         }
         else if(size == 0) //no data
         {
-            PRINT("There was an RX event, but no data was received\n");
+            PRINT(LOG_WARNING, "There was an RX event, but no data was received\n");
             continue;
         }
 
@@ -545,12 +562,12 @@ void *ip6ip_execSock(void *arg)
 
         if(size < 0) //an error
         {
-            DEBUG("Socket RX failed");
+            DEBUG(LOG_ERR, "Socket RX failed");
             continue;
         }
         else if(size == 0) //no data
         {
-            PRINT("There was an RX event, but no data was received\n");
+            PRINT(LOG_WARNING, "There was an RX event, but no data was received\n");
             continue;
         }
 
@@ -569,14 +586,14 @@ int Ipip_start()
     pthread_t tunTh, sockTh, sock6Th;
     if(pthread_create(&tunTh, NULL, &ipip_execTunnel, NULL) < 0) //start threads
     {
-        DEBUG("Tunnel thread creation failed");
+        DEBUG(LOG_ERR, "Tunnel thread creation failed");
         return -1;
     }
     if(config.tun4in4)
     {
         if(pthread_create(&sockTh, NULL, &ipip_execSock, NULL) < 0) //start threads
         {
-            DEBUG("IPv4 socket thread creation failed");
+            DEBUG(LOG_ERR, "IPv4 socket thread creation failed");
             return -1;
         }
     }
@@ -584,7 +601,7 @@ int Ipip_start()
     {
         if(pthread_create(&sock6Th, NULL, &ip6ip_execSock, NULL) < 0) //start threads
         {
-            DEBUG("IPv4 socket thread creation failed");
+            DEBUG(LOG_ERR, "IPv4 socket thread creation failed");
             return -1;
         }
     }
