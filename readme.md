@@ -2,7 +2,7 @@
 
   
 
-Kiwitun is an easy-to-use module-independent IPIP (4in4) and IP6IP (6in4) tunneling daemon.
+Kiwitun is an easy to use module-independent IPIP (4in4) and IP6IP (6in4) tunneling daemon.
 
 The main purpose of this project was to provide IPIP tunneling to Linux systems with no Loadable Kernel Module (LKM) support. The program is also shell- and file-independent, as it uses only well-defined kernel interfaces (netlink and rtnetlink) for communication.
 
