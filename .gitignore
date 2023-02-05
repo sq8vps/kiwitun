@@ -37,7 +37,7 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 *-prefix/
-.vscode/*
+.vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
@@ -48,6 +48,5 @@ _deps
 .history
 .ionide
 
-build/*
-!build/Makefile
+build/
 
