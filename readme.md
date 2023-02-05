@@ -90,12 +90,12 @@ Interface (inner) address **must** be set with:
 ```bash
 sudo ip address add <tunaddress/mask> dev tun0
 ```
-Where ```<tunaddress/mask>``` is the address and netmask (CIDR format) and ```tun0``` is the tunnel interface name (define it with ```-i <name>``` when starting kiwitun or use ```ip link``` to check its name).
+Where ```<tunaddress/mask>``` is the address and netmask (CIDR format) and ```tun0``` is the tunnel interface name (define it with ```-i <name>``` when starting kiwitun or use ```ip link``` to check its name).  
 To route another address (or network) via the tunnel:
 ```bash
 sudo ip route add <address/mask> dev tun0
 ```
-Where ```<address/mask>``` is the address to route and its netmask (CIDR format) and ```tun0``` is the tunnel interface name.
+Where ```<address/mask>``` is the address to route and its netmask (CIDR format) and ```tun0``` is the tunnel interface name.  
 Add appropriate firewall rules if needed.
 
 ### Kiwitun with dynamic remote endpoint
@@ -119,8 +119,8 @@ For IP6IP (6in4) tunnels:
 sudo ip route add <address/mask> via ::ffff:<remote> dev <tun0> onlink
 ```
 Where ```<address/mask>``` is the destination address and netmask (CIDR format), ```<remote>``` is the remote endpoint IPv4 address and  ```tun0``` is the tunnel interface name.  
-Add appropriate firewall rules if needed.
-**Notice 1**: Default gateways are not used as they don't point to any actual remote endpoint. Packets with unresolvable remote endpoint are dropped and ICMP Destination Unreachable is returned to the sender.
+Add appropriate firewall rules if needed.  
+**Notice 1**: Default gateways are not used as they don't point to any actual remote endpoint. Packets with unresolvable remote endpoint are dropped and ICMP Destination Unreachable is returned to the sender.  
 **Notice 2**: As there is no fixed remote address, all valid encapsulated packets received will be decapsulated and sent further. Appropriate firewall rules must be added to filter out unwanted packets.
 
 ### Examples
