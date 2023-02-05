@@ -38,7 +38,8 @@ mkdir build && cd  build
 cmake ..
 make
 ```
-From now on you should be able to run kiwitun from current directory (*build*).
+From now on you should be able to run kiwitun from current directory (*build*).  
+**Notice**: If you are building kiwitun without Cmake you need to link *pthread* library to the executable.
 
 ### Installation
 
